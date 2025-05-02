@@ -1,0 +1,851 @@
+# Lade notwendige Bibliotheken für die Datenmanipulation und statistische Analyse
+library(tidyverse)   # Für Datenmanipulation und -visualisierung
+library(lme4)        # Für lineare gemischte Modelle
+library(lmerTest)    # Ergänzt lme4 um Signifikanztests für gemischte Modelle
+library(tigerstats)  # Für zusätzliche statistische Funktionen
+library(MuMIn)
+library(broom.mixed)
+library(ggplot2)
+library(interactions)
+
+# Daten filtern: Behalte nur Beobachtungen mit Geschlecht 0 oder 1
+data_level2 <- data_level2 %>% 
+  filter(gender %in% c(0, 1))
+
+# z-Standardisierung #
+
+data_level2_scaled <- data_level2
+
+# Skaliere nur echte numerische Spalten
+num_cols <- names(data_level2_scaled)[sapply(data_level2_scaled, is.numeric)]
+
+# Wenn bestimmte Spalten wie "group" ausgeschlossen werden sollen:
+num_cols <- setdiff(num_cols, "group")
+
+# Skaliere die ausgewählten Spalten
+data_level2_scaled[num_cols] <- scale(data_level2_scaled[num_cols])
+
+
+
+# ############################################################################ #
+################################ Modelle #####################################
+# ############################################################################ #
+
+################################# VHI ########################################
+
+# Definiere das erste gemischte Modell (Model VHI_01)
+# Abhängige Variable: VHI_sum
+# Unabhängige Variablen: sp, group, gender, age, workload_hours, und die Interaktion zwischen sp und group
+# Zufälliger Effekt: token
+model_VHI_01 <- lmer(VHI_sum ~ sp + group + gender + age + workload_hours + sp:group + (1 | token), data = data_level2)
+
+# Zeige die Zusammenfassung des Modells, um die Koeffizienten und statistischen Tests zu sehen
+summary(model_VHI_01)
+
+# Exportiere die Zusammenfassung in eine Excel-Datei
+model_summary_VHI_01 <- tidy(model_VHI_01)
+write_xlsx(model_summary_VHI_01, "model_VHI_01_summary.xlsx")
+
+# Erstelle diagnostische Plots für das Modell
+# Streudiagramm der Residuen gegen die vorhergesagten Werte mit einer geglätteten Linie
+plot(model_VHI_01, type = c("p", "smooth"), col.line = "black")
+
+# Streudiagramm der Quadratwurzel der absoluten Residuen gegen die vorhergesagten Werte mit geglätteter Linie und Gitter
+xyplot(sqrt(abs(resid(model_VHI_01))) ~ fitted(model_VHI_01), type = c("p", "smooth", "g"), col.line = "black")
+
+# Berechne die Residuen des Modells und erstelle ein Q-Q-Plot zur Überprüfung der Normalverteilung der Residuen
+residuals_VHI <- resid(model_VHI_01)
+qqnorm(residuals_VHI, main = "Q-Q-Plot of residuals")
+qqline(residuals_VHI, col = "red")
+
+r.squaredGLMM(model_VHI_01)
+
+# Definiere das zweite gemischte Modell (Model VHI_02)
+# Filtern: nur Beobachtungen, bei denen group gleich 1 ist
+# Abhängige Variable: VHI_sum
+# Unabhängige Variablen: sp, gender, age, workload_hours, app_usage_unique_days, excercise_duration_total und 
+# Interaktionen zwischen sp und app_usage_unique_days sowie sp und excercise_duration_total
+# Zufälliger Effekt: token
+model_VHI_02 <- lmer(VHI_sum ~ gender + age + workload_hours + sp * app_usage_unique_days + sp * excercise_duration_total + (1 | token), data = data_level2 %>% filter(group == 1, app_usage_unique_days > 1))
+
+# Zeige die Zusammenfassung des Modells, um die Koeffizienten und statistischen Tests zu sehen
+summary(model_VHI_02)
+model_summary_VHI_02 <- tidy(model_VHI_02)
+write_xlsx(model_summary_VHI_02, "model_VHI_02_summary.xlsx")
+# Jetzt die anderen Modelle
+
+################################# DSI ########################################
+
+model_DSI_01 <- lmer(dsi ~ sp + group + gender + age + workload_hours + sp:group + (1 | token), data = data_level2)
+summary(model_DSI_01)
+model_summary_DSI_01 <- tidy(model_DSI_01)
+write_xlsx(model_summary_DSI_01, "model_DSI_01_summary.xlsx")
+plot(model_DSI_01, type = c("p", "smooth"), col.line = "black")
+xyplot(sqrt(abs(resid(model_DSI_01))) ~ fitted(model_DSI_01), type = c("p", "smooth", "g"),
+       col.line = "black")
+residuals_DSI <- resid(model_DSI_01)
+qqnorm(residuals_DSI, main = "Q-Q-Plot of residuals")
+qqline(residuals_DSI, col = "red")
+
+r.squaredGLMM(model_DSI_01)
+
+model_DSI_02 <- lmer(dsi ~ gender + age + workload_hours + sp * app_usage_unique_days + sp * excercise_duration_total + (1 | token), data = data_level2 %>% filter(group == 1, app_usage_unique_days > 1))
+summary(model_DSI_02)
+model_summary_DSI_02 <- tidy(model_DSI_02)
+write_xlsx(model_summary_DSI_02, "model_DSI_02_summary.xlsx")
+
+################################## Stimmfeld #################################
+
+model_Stimmfeld_01 <- lmer(singing_profile_size ~ sp + group + gender + age + workload_hours + sp:group + (1 | token), data = data_level2)
+summary(model_Stimmfeld_01)
+model_summary_Stimmfeld_01 <- tidy(model_Stimmfeld_01)
+round.df(model_summary_Stimmfeld_01, 2)
+write_xlsx(model_summary_Stimmfeld_01, "model_Stimmfeld_01_summary.xlsx")
+plot(model_Stimmfeld_01, type = c("p", "smooth"), col.line = "black")
+xyplot(sqrt(abs(resid(model_Stimmfeld_01))) ~ fitted(model_Stimmfeld_01), type = c("p", "smooth", "g"),
+       col.line = "black")
+residuals_Stimmfeld <- resid(model_Stimmfeld_01)
+qqnorm(residuals_Stimmfeld, main = "Q-Q-Plot of residuals")
+qqline(residuals_Stimmfeld, col = "red")
+r.squaredGLMM(model_Stimmfeld_01)
+
+model_Stimmfeld_02 <- lmer(singing_profile_size ~ gender + age + workload_hours + sp * app_usage_unique_days + sp * excercise_duration_total + (1 | token), data = data_level2 %>% filter(group == 1, app_usage_unique_days > 1))
+summary(model_Stimmfeld_02)
+model_summary_Stimmfeld_02 <- tidy(model_Stimmfeld_02)
+write_xlsx(model_summary_Stimmfeld_02, "model_Stimmfeld_02_summary.xlsx")
+
+################################## FESS ##################################
+
+model_FESS_01 <- lmer(FESS_sum ~ sp + group + gender + age + workload_hours + sp:group + (1 | token), data = data_level2)
+summary(model_FESS_01)
+model_summary_FESS_01 <- tidy(model_FESS_01)
+write_xlsx(model_summary_FESS_01, "model_FESS_01_summary.xlsx")
+plot(model_FESS_01, type = c("p", "smooth"), col.line = "black")
+xyplot(sqrt(abs(resid(model_FESS_01))) ~ fitted(model_FESS_01), type = c("p", "smooth", "g"),
+       col.line = "black")
+residuals_FESS <- resid(model_FESS_01)
+qqnorm(residuals_FESS, main = "Q-Q-Plot of residuals")
+qqline(residuals_FESS, col = "red")
+
+model_FESS_02 <- lmer(FESS_sum ~ gender + age + workload_hours + sp * app_usage_unique_days + sp * excercise_duration_total + (1 | token), data = data_level2 %>% filter(group == 1, app_usage_unique_days > 1))
+summary(model_FESS_02)
+model_summary_FESS_02 <- tidy(model_FESS_02)
+write_xlsx(model_summary_FESS_02, "model_FESS_02_summary.xlsx")
+
+################################## FESS_BW ##################################
+
+model_FESS_BW_01 <- lmer(FESS_BW_sum ~ sp + group + gender + age + workload_hours + sp:group + (1 | token), data = data_level2)
+summary(model_FESS_BW_01)
+model_summary_FESS_BW_01 <- tidy(model_FESS_BW_01)
+write_xlsx(model_summary_FESS_BW_01, "model_FESS_BW_01_summary.xlsx")
+plot(model_FESS_BW_01, type = c("p", "smooth"), col.line = "black")
+xyplot(sqrt(abs(resid(model_FESS_BW_01))) ~ fitted(model_FESS_BW_01), type = c("p", "smooth", "g"),
+       col.line = "black")
+residuals_FESS_BW <- resid(model_FESS_BW_01)
+qqnorm(residuals_FESS_BW, main = "Q-Q-Plot of residuals")
+qqline(residuals_FESS_BW, col = "red")
+
+model_FESS_BW_02 <- lmer(FESS_BW_sum ~ gender + age + workload_hours + sp * app_usage_unique_days + sp * excercise_duration_total + (1 | token), data = data_level2 %>% filter(group == 1, app_usage_unique_days > 1))
+summary(model_FESS_BW_02)
+model_summary_FESS_BW_02 <- tidy(model_FESS_BW_02)
+write_xlsx(model_summary_FESS_BW_02, "model_FESS_BW_02_summary.xlsx")
+
+################################## FESS_BZ ##################################
+
+model_FESS_BZ_01 <- lmer(FESS_BZ_sum ~ sp + group + gender + age + workload_hours + sp:group + (1 | token), data = data_level2)
+summary(model_FESS_BZ_01)
+model_summary_FESS_BZ_01 <- tidy(model_FESS_BZ_01)
+write_xlsx(model_summary_FESS_BZ_01, "model_FESS_BZ_01_summary.xlsx")
+plot(model_FESS_BZ_01, type = c("p", "smooth"), col.line = "black")
+xyplot(sqrt(abs(resid(model_FESS_BZ_01))) ~ fitted(model_FESS_BZ_01), type = c("p", "smooth", "g"),
+       col.line = "black")
+residuals_FESS_BZ <- resid(model_FESS_BZ_01)
+qqnorm(residuals_FESS_BZ, main = "Q-Q-Plot of residuals")
+qqline(residuals_FESS_BZ, col = "red")
+
+model_FESS_BZ_02 <- lmer(FESS_BZ_sum ~ gender + age + workload_hours + sp * app_usage_unique_days + sp * excercise_duration_total + (1 | token), data = data_level2 %>% filter(group == 1, app_usage_unique_days > 1))
+summary(model_FESS_BZ_02)
+model_summary_FESS_BZ_02 <- tidy(model_FESS_BZ_02)
+write_xlsx(model_summary_FESS_BZ_02, "model_FESS_BZ_02_summary.xlsx")
+
+################################## FESS_SE ##################################
+
+model_FESS_SE_01 <- lmer(FESS_SE_sum ~ sp + group + gender + age + workload_hours + sp:group + (1 | token), data = data_level2)
+summary(model_FESS_SE_01)
+model_summary_FESS_SE_01 <- tidy(model_FESS_SE_01)
+write_xlsx(model_summary_FESS_SE_01, "model_FESS_SE_01_summary.xlsx")
+plot(model_FESS_SE_01, type = c("p", "smooth"), col.line = "black")
+xyplot(sqrt(abs(resid(model_FESS_SE_01))) ~ fitted(model_FESS_SE_01), type = c("p", "smooth", "g"),
+       col.line = "black")
+residuals_FESS_SE <- resid(model_FESS_SE_01)
+qqnorm(residuals_FESS_SE, main = "Q-Q-Plot of residuals")
+qqline(residuals_FESS_SE, col = "red")
+
+model_FESS_SE_02 <- lmer(FESS_SE_sum ~ gender + age + workload_hours + sp * app_usage_unique_days + sp * excercise_duration_total + (1 | token), data = data_level2 %>% filter(group == 1, app_usage_unique_days > 1))
+summary(model_FESS_SE_02)
+model_summary_FESS_SE_02 <- tidy(model_FESS_SE_02)
+write_xlsx(model_summary_FESS_SE_02, "model_FESS_SE_02_summary.xlsx")
+
+
+#z-standardisierte Werte
+################################# VHI ########################################
+
+model_VHI_01_scaled <- lmer(VHI_sum ~ sp + group + gender + age + workload_hours + sp:group + (1 | token), data = data_level2_scaled)
+summary(model_VHI_01_scaled)
+model_summary_VHI_01_scaled <- tidy(model_VHI_01_scaled)
+write_xlsx(model_summary_VHI_01_scaled, "model_VHI_01_summary_scaled.xlsx")
+
+
+model_VHI_02_scaled <- lmer(VHI_sum ~ gender + age + workload_hours + sp * app_usage_unique_days + sp * excercise_duration_total + (1 | token), data = data_level2_scaled %>% filter(group == 1, app_usage_unique_days > 1))
+summary(model_VHI_02_scaled)
+model_summary_VHI_02_scaled <- tidy(model_VHI_02_scaled)
+write_xlsx(model_summary_VHI_02_scaled, "model_VHI_02_summary_scaled.xlsx")
+
+################################# DSI ########################################
+
+model_DSI_01_scaled <- lmer(dsi ~ sp + group + gender + age + workload_hours + sp:group + (1 | token), data = data_level2_scaled)
+summary(model_DSI_01_scaled)
+model_summary_DSI_01_scaled <- tidy(model_DSI_01_scaled)
+write_xlsx(model_summary_DSI_01_scaled, "model_DSI_01_summary_scaled.xlsx")
+
+model_DSI_02_scaled <- lmer(dsi ~ gender + age + workload_hours + sp * app_usage_unique_days + sp * excercise_duration_total + (1 | token), data = data_level2_scaled %>% filter(group == 1, app_usage_unique_days > 1))
+summary(model_DSI_02_scaled)
+model_summary_DSI_02_scaled <- tidy(model_DSI_02_scaled)
+write_xlsx(model_summary_DSI_02_scaled, "model_DSI_02_summary_scaled.xlsx")
+
+################################## Stimmfeld #################################
+
+model_Stimmfeld_01_scaled <- lmer(singing_profile_size ~ sp + group + gender + age + workload_hours + sp:group + (1 | token), data = data_level2_scaled)
+summary(model_Stimmfeld_01_scaled)
+model_summary_Stimmfeld_01_scaled <- tidy(model_Stimmfeld_01_scaled)
+write_xlsx(model_summary_Stimmfeld_01_scaled, "model_Stimmfeld_01_summary_scaled.xlsx")
+
+model_Stimmfeld_02_scaled <- lmer(singing_profile_size ~ gender + age + workload_hours + sp * app_usage_unique_days + sp * excercise_duration_total + (1 | token), data = data_level2_scaled %>% filter(group == 1, app_usage_unique_days > 1))
+summary(model_Stimmfeld_02_scaled)
+model_summary_Stimmfeld_02_scaled <- tidy(model_Stimmfeld_02_scaled)
+write_xlsx(model_summary_Stimmfeld_02_scaled, "model_Stimmfeld_02_summary_scaled.xlsx")
+
+################################## FESS ##################################
+
+model_FESS_01_scaled <- lmer(FESS_sum ~ sp + group + gender + age + workload_hours + sp:group + (1 | token), data = data_level2_scaled)
+summary(model_FESS_01_scaled)
+model_summary_FESS_01_scaled <- tidy(model_FESS_01_scaled)
+write_xlsx(model_summary_FESS_01_scaled, "model_FESS_01_summary_scaled.xlsx")
+
+model_FESS_02_scaled <- lmer(FESS_sum ~ gender + age + workload_hours + sp * app_usage_unique_days + sp * excercise_duration_total + (1 | token), data = data_level2_scaled %>% filter(group == 1, app_usage_unique_days > 1))
+summary(model_FESS_02_scaled)
+model_summary_FESS_02_scaled <- tidy(model_FESS_02_scaled)
+write_xlsx(model_summary_FESS_02_scaled, "model_FESS_02_summary_scaled.xlsx")
+
+################################## FESS_BW ##################################
+
+model_FESS_BW_01_scaled <- lmer(FESS_BW_sum ~ sp + group + gender + age + workload_hours + sp:group + (1 | token), data = data_level2_scaled)
+summary(model_FESS_BW_01_scaled)
+model_summary_FESS_BW_01_scaled <- tidy(model_FESS_BW_01_scaled)
+write_xlsx(model_summary_FESS_BW_01_scaled, "model_FESS_BW_01_summary_scaled.xlsx")
+
+model_FESS_BW_02_scaled <- lmer(FESS_BW_sum ~ gender + age + workload_hours + sp * app_usage_unique_days + sp * excercise_duration_total + (1 | token), data = data_level2_scaled %>% filter(group == 1, app_usage_unique_days > 1))
+summary(model_FESS_BW_02_scaled)
+model_summary_FESS_BW_02_scaled <- tidy(model_FESS_BW_02_scaled)
+write_xlsx(model_summary_FESS_BW_02_scaled, "model_FESS_BW_02_summary_scaled.xlsx")
+
+################################## FESS_BZ ##################################
+
+model_FESS_BZ_01_scaled <- lmer(FESS_BZ_sum ~ sp + group + gender + age + workload_hours + sp:group + (1 | token), data = data_level2_scaled)
+summary(model_FESS_BZ_01_scaled)
+model_summary_FESS_BZ_01_scaled <- tidy(model_FESS_BZ_01_scaled)
+write_xlsx(model_summary_FESS_BZ_01_scaled, "model_FESS_BZ_01_summary_scaled.xlsx")
+
+model_FESS_BZ_02_scaled <- lmer(FESS_BZ_sum ~ gender + age + workload_hours + sp * app_usage_unique_days + sp * excercise_duration_total + (1 | token), data = data_level2_scaled %>% filter(group == 1, app_usage_unique_days > 1))
+summary(model_FESS_BZ_02_scaled)
+model_summary_FESS_BZ_02_scaled <- tidy(model_FESS_BZ_02_scaled)
+write_xlsx(model_summary_FESS_BZ_02_scaled, "model_FESS_BZ_02_summary_scaled.xlsx")
+
+################################## FESS_SE ##################################
+
+model_FESS_SE_01_scaled <- lmer(FESS_SE_sum ~ sp + group + gender + age + workload_hours + sp:group + (1 | token), data = data_level2_scaled)
+summary(model_FESS_SE_01_scaled)
+model_summary_FESS_SE_01_scaled <- tidy(model_FESS_SE_01_scaled)
+write_xlsx(model_summary_FESS_SE_01_scaled, "model_FESS_SE_01_summary_scaled.xlsx")
+
+model_FESS_SE_02_scaled <- lmer(FESS_SE_sum ~ gender + age + workload_hours + sp * app_usage_unique_days + sp * excercise_duration_total + (1 | token), data = data_level2_scaled %>% filter(group == 1, app_usage_unique_days > 1))
+summary(model_FESS_SE_02_scaled)
+model_summary_FESS_SE_02_scaled <- tidy(model_FESS_SE_02_scaled)
+write_xlsx(model_summary_FESS_SE_02_scaled, "model_FESS_SE_02_summary_scaled.xlsx")
+
+
+
+# ############################################################################ #
+################################ deskriptive Statistik #####################################
+# ############################################################################ #
+
+################################## Geschlecht ################################## 
+
+sum(data_level2$gender == 0)/2
+sum(data_level2$gender == 1)/2
+
+################################## Schulart ################################## 
+
+sum(data_level2$school_type == "A1")/2
+sum(data_level2$school_type == "A2")/2
+sum(data_level2$school_type == "A3")/2
+sum(data_level2$school_type == "-oth-")/2
+
+
+filtered_data <- data %>% filter(sp == 0)
+
+################################## Alter ################################## 
+# Altersgruppen als Faktor mit passenden Labels erstellen
+filtered_data <- filtered_data %>%
+  mutate(age_group = cut(age, 
+                         breaks = seq(floor(min(age)/10)*10, ceiling(max(age)/10)*10, by = 10), 
+                         include.lowest = TRUE,
+                         right = FALSE,  # Intervall schließt linke Grenze ein, aber nicht die rechte
+                         labels = c("20-29", "30-39", "40-49", "50-59", "60-69", "70-79")))  # Anpassen je nach Datenbereich
+
+# Histogramm mit den neuen Altersgruppen als x-Achse
+filtered_data_age <- filtered_data %>%
+  mutate(age_group = cut(age, 
+                         breaks = seq(floor(min(age)/10)*10, ceiling(max(age)/10)*10, by = 10), 
+                         include.lowest = TRUE,
+                         right = FALSE,  # Intervall schließt linke Grenze ein, aber nicht die rechte
+                         labels = c("20-29", "30-39", "40-49", "50-59", "60-69")))
+plot_age <- ggplot(filtered_data_age, aes(x = age_group)) +
+  geom_bar(
+    fill = "steelblue", 
+    color = "black", 
+    alpha = 0.7
+  ) +
+  labs(
+    x = "Alter", 
+    y = "Anzahl der Personen"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),  
+    axis.title.x = element_text(size = 12),  
+    axis.title.y = element_text(size = 12),  
+    axis.text.x = element_text(size = 10),  
+    axis.text.y = element_text(size = 10),  
+    panel.grid.major = element_blank(),  
+  )
+plot_age
+
+
+################################## workload ################################## 
+plot_workload <- ggplot(filtered_data, aes(x = workload_hours)) +
+  geom_histogram(
+    bins = 8,
+    fill = "steelblue", 
+    color = "black", 
+    alpha = 0.7
+  ) +
+  labs(
+    x = "Unterrichtsstunden", 
+    y = "Anzahl der Personen"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),  
+    axis.title.x = element_text(size = 12),  
+    axis.title.y = element_text(size = 12),  
+    axis.text.x = element_text(size = 10),  
+    axis.text.y = element_text(size = 10),  
+    panel.grid.major = element_blank()
+  )
+plot_workload
+
+
+################################## Verteilung Fragebögen ################################## 
+
+# Berechne die Werte für VHI_sum
+min_value_VHI_sum <- min(data_level2$VHI_sum, na.rm = TRUE)
+max_value_VHI_sum <- max(data_level2$VHI_sum, na.rm = TRUE)
+mean_value_VHI_sum <- mean(data_level2$VHI_sum, na.rm = TRUE)
+median_value_VHI_sum <- median(data_level2$VHI_sum, na.rm = TRUE)
+sd_value_VHI_sum <- sd(data_level2$VHI_sum, na.rm = TRUE)
+var_value_VHI_sum <- var(data_level2$VHI_sum, na.rm = TRUE)
+
+# Berechne die Werte für FESS_sum
+min_value_FESS_sum <- min(data_level2$FESS_sum, na.rm = TRUE)
+max_value_FESS_sum <- max(data_level2$FESS_sum, na.rm = TRUE)
+mean_value_FESS_sum <- mean(data_level2$FESS_sum, na.rm = TRUE)
+median_value_FESS_sum <- median(data_level2$FESS_sum, na.rm = TRUE)
+sd_value_FESS_sum <- sd(data_level2$FESS_sum, na.rm = TRUE)
+var_value_FESS_sum <- var(data_level2$FESS_sum, na.rm = TRUE)
+
+# Berechne die Werte für FESS_BZ_sum
+min_value_FESS_BZ_sum <- min(data_level2$FESS_BZ_sum, na.rm = TRUE)
+max_value_FESS_BZ_sum <- max(data_level2$FESS_BZ_sum, na.rm = TRUE)
+mean_value_FESS_BZ_sum <- mean(data_level2$FESS_BZ_sum, na.rm = TRUE)
+median_value_FESS_BZ_sum <- median(data_level2$FESS_BZ_sum, na.rm = TRUE)
+sd_value_FESS_BZ_sum <- sd(data_level2$FESS_BZ_sum, na.rm = TRUE)
+var_value_FESS_BZ_sum <- var(data_level2$FESS_BZ_sum, na.rm = TRUE)
+
+# Berechne die Werte für FESS_BW_sum
+min_value_FESS_BW_sum <- min(data_level2$FESS_BW_sum, na.rm = TRUE)
+max_value_FESS_BW_sum <- max(data_level2$FESS_BW_sum, na.rm = TRUE)
+mean_value_FESS_BW_sum <- mean(data_level2$FESS_BW_sum, na.rm = TRUE)
+median_value_FESS_BW_sum <- median(data_level2$FESS_BW_sum, na.rm = TRUE)
+sd_value_FESS_BW_sum <- sd(data_level2$FESS_BW_sum, na.rm = TRUE)
+var_value_FESS_BW_sum <- var(data_level2$FESS_BW_sum, na.rm = TRUE)
+
+# Berechne die Werte für FESS_SE_sum
+min_value_FESS_SE_sum <- min(data_level2$FESS_SE_sum, na.rm = TRUE)
+max_value_FESS_SE_sum <- max(data_level2$FESS_SE_sum, na.rm = TRUE)
+mean_value_FESS_SE_sum <- mean(data_level2$FESS_SE_sum, na.rm = TRUE)
+median_value_FESS_SE_sum <- median(data_level2$FESS_SE_sum, na.rm = TRUE)
+sd_value_FESS_SE_sum <- sd(data_level2$FESS_SE_sum, na.rm = TRUE)
+var_value_FESS_SE_sum <- var(data_level2$FESS_SE_sum, na.rm = TRUE)
+
+# Berechne die Werte für DSI_sum
+min_value_DSI <- min(data_level2$dsi, na.rm = TRUE)
+max_value_DSI <- max(data_level2$dsi, na.rm = TRUE)
+mean_value_DSI <- mean(data_level2$dsi, na.rm = TRUE)
+median_value_DSI <- median(data_level2$dsi, na.rm = TRUE)
+sd_value_DSI <- sd(data_level2$dsi, na.rm = TRUE)
+var_value_DSI <- var(data_level2$dsi, na.rm = TRUE)
+
+# Berechne die Werte für singing_profile_size
+min_value_singing_profile_size <- min(data_level2$singing_profile_size, na.rm = TRUE)
+max_value_singing_profile_size <- max(data_level2$singing_profile_size, na.rm = TRUE)
+mean_value_singing_profile_size <- mean(data_level2$singing_profile_size, na.rm = TRUE)
+median_value_singing_profile_size <- median(data_level2$singing_profile_size, na.rm = TRUE)
+sd_value_singing_profile_size <- sd(data_level2$singing_profile_size, na.rm = TRUE)
+var_value_singing_profile_size <- var(data_level2$singing_profile_size, na.rm = TRUE)
+
+# Erstelle einen DataFrame mit den Ergebnissen
+results <- data.frame(
+  Fragebogen = c("VHI", "FESS", "FESS_BZ", "FESS_BW", "FESS_SE", "DSI", "Stimmfeldgröße"),
+  Minimum = round(c(min_value_VHI_sum, min_value_FESS_sum, min_value_FESS_BZ_sum, min_value_FESS_BW_sum, min_value_FESS_SE_sum, min_value_DSI, min_value_singing_profile_size), 2),
+  Maximum = round(c(max_value_VHI_sum, max_value_FESS_sum, max_value_FESS_BZ_sum, max_value_FESS_BW_sum, max_value_FESS_SE_sum, max_value_DSI, max_value_singing_profile_size), 2),
+  Mittelwert = round(c(mean_value_VHI_sum, mean_value_FESS_sum, mean_value_FESS_BZ_sum, mean_value_FESS_BW_sum, mean_value_FESS_SE_sum, mean_value_DSI, mean_value_singing_profile_size), 2),
+  Median = round(c(median_value_VHI_sum, median_value_FESS_sum, median_value_FESS_BZ_sum, median_value_FESS_BW_sum, median_value_FESS_SE_sum, median_value_DSI, median_value_singing_profile_size), 2),
+  Standardabweichung = round(c(sd_value_VHI_sum, sd_value_FESS_sum, sd_value_FESS_BZ_sum, sd_value_FESS_BW_sum, sd_value_FESS_SE_sum, sd_value_DSI, sd_value_singing_profile_size), 2),
+  Varianz = round(c(var_value_VHI_sum, var_value_FESS_sum, var_value_FESS_BZ_sum, var_value_FESS_BW_sum, var_value_FESS_SE_sum, var_value_DSI, var_value_singing_profile_size), 2)
+)
+
+# Erstelle eine LaTeX-Tabelle
+kable(results, format = "latex", booktabs = TRUE, caption = "Deskriptive Statistik der Fragebögen")
+
+
+################################## Einteilung der Probanden in den VHI ################################## 
+# Definiere die Kategorien
+grenzen <- c(0, 7, 14, 22, 48)
+kategorien <- c("0-7", "7-14", "14-22", "22-48")
+
+# Entferne Zeilen mit NA in der Spalte VHI_sum
+data_clean <- data_level2[!is.na(data_level2$VHI_sum), ]
+
+# Gesamtanzahl der gültigen (nicht-NA) Werte
+n_valid <- nrow(data_clean)
+
+# Berechne die Prozentsätze für jede Kategorie
+prozentwerte <- sapply(1:(length(grenzen) - 1), function(i) {
+  if (i == 1) {
+    sum(data_clean$VHI_sum >= grenzen[i] & data_clean$VHI_sum <= grenzen[i + 1]) / n_valid * 100
+  } else if (i < length(grenzen) - 1) {
+    sum(data_clean$VHI_sum > grenzen[i] & data_clean$VHI_sum <= grenzen[i + 1]) / n_valid * 100
+  } else {
+    sum(data_clean$VHI_sum > grenzen[i] & data_clean$VHI_sum <= grenzen[i + 1]) / n_valid * 100
+  }
+})
+
+# Erstelle einen DataFrame mit den Ergebnissen
+ergebnisse <- data.frame(Kategorie = kategorien, Prozentsatz = round(prozentwerte, 2))
+
+# Prüfe, ob die Summe 100 % ergibt
+cat("Summe der Prozentsätze:", sum(prozentwerte), "%\n")
+
+# Ausgabe der Tabelle
+print(ergebnisse)
+
+
+################################## Einteilung der Probanden in den DSI ################################## 
+# Definiere die Kategorien
+grenzen <- c(-10, -1.2, 1.8, 4.2, 40)
+kategorien <- c("-10--1.2", "-1.2-1.8", "1.8-4.2", "4.2-40")
+
+# Entferne Zeilen mit NA in der Spalte VHI_sum
+data_clean <- data_level2[!is.na(data_level2$dsi), ]
+
+# Gesamtanzahl der gültigen (nicht-NA) Werte
+n_valid <- nrow(data_clean)
+
+# Berechne die Prozentsätze für jede Kategorie
+prozentwerte <- sapply(1:(length(grenzen) - 1), function(i) {
+  if (i == 1) {
+    sum(data_clean$dsi >= grenzen[i] & data_clean$dsi <= grenzen[i + 1]) / n_valid * 100
+  } else if (i < length(grenzen) - 1) {
+    sum(data_clean$dsi > grenzen[i] & data_clean$dsi <= grenzen[i + 1]) / n_valid * 100
+  } else {
+    sum(data_clean$dsi > grenzen[i] & data_clean$dsi <= grenzen[i + 1]) / n_valid * 100
+  }
+})
+
+# Erstelle einen DataFrame mit den Ergebnissen
+ergebnisse <- data.frame(Kategorie = kategorien, Prozentsatz = round(prozentwerte, 2))
+
+# Prüfe, ob die Summe 100 % ergibt
+cat("Summe der Prozentsätze:", sum(prozentwerte), "%\n")
+
+# Ausgabe der Tabelle
+print(ergebnisse)
+
+
+
+##################################  App-Nutzungsdaten ################################## 
+
+Intervention_alle <- data_level2 %>% 
+  filter(group == 1) %>% 
+  filter(sp == 0)
+
+
+Intervention_alle <- Intervention_alle %>% 
+  mutate(app_usage_gruppe = case_when(
+    is.na(app_usage_unique_days) ~ "<2",
+    app_usage_unique_days <= 1 ~ "<2",
+    app_usage_unique_days > 1 & app_usage_unique_days <= 5 ~ "2-5",
+    app_usage_unique_days > 5 & app_usage_unique_days <= 10 ~ "6-10",
+    app_usage_unique_days > 10 & app_usage_unique_days <= 15 ~ "11-15",
+    app_usage_unique_days > 15 & app_usage_unique_days <= 20 ~ "16-20",
+    app_usage_unique_days > 20 & app_usage_unique_days <= 25 ~ "21-25",
+    app_usage_unique_days > 25  ~ ">25"
+  ))
+
+table(Intervention_alle$app_usage_gruppe, useNA = "ifany")
+
+Intervention_alle <- Intervention_alle %>%
+  mutate(exercise_duration_total_h = excercise_duration_total / 3600)
+
+Intervention <- Intervention_alle %>% 
+  filter(app_usage_unique_days > 1)
+
+# 41 mit NA oder 1
+
+plot_app_usage <- Intervention %>% 
+  ggplot(aes(x = app_usage_unique_days)) +
+  geom_histogram(
+    bins = 30, 
+    fill = "steelblue", 
+    color = "black", 
+    alpha = 0.7
+  ) +
+  labs(
+    x = "Anzahl der Tage",                     # x-Achse
+    y = "Anzahl der Personen"                    # y-Achse
+  ) +
+  scale_x_continuous(
+    breaks = seq(0, max(Intervention$app_usage_unique_days), by = 5)
+  ) +
+  theme_minimal() +                             # Minimalistisches Design
+  theme(
+    axis.title.x = element_text(size = 12),  # Schriftgröße für x-Achse
+    axis.title.y = element_text(size = 12),   # Schriftgröße für y-Achse
+    panel.grid.major = element_blank()       # Entfernen der großen Gitterlinien
+  )
+plot_app_usage
+
+
+plot_exercise <- Intervention %>% 
+  ggplot(aes(x = exercise_duration_total_h)) +
+  geom_histogram(
+    bins = 30, 
+    fill = "steelblue", 
+    color = "black", 
+    alpha = 0.7
+  ) +
+  labs(
+    x = "Übungsdauer (in Stunden)",            
+    y = "Anzahl der Personen"    
+  ) +
+  theme_minimal() +           
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 16, face = "bold"),  # Titel zentrieren und vergrößern
+    axis.title.x = element_text(size = 12),     # Größe der x-Achsenbeschriftung
+    axis.title.y = element_text(size = 12),     # Größe der y-Achsenbeschriftung
+    axis.text.y = element_text(size = 10),      # Schriftgröße der y-Achse
+    panel.grid.major = element_blank()       # Entfernen der großen Gitterlinien
+  )
+plot_exercise
+
+# Tage genutzt im Durchschnitt
+app_usage_mean <- mean(Intervention$app_usage_unique_days, na.rm = TRUE)
+app_usage_mean
+# Min Max Tage
+app_usage_min <- min(Intervention_alle$app_usage_unique_days, na.rm = TRUE)
+app_usage_min
+app_usage_max <- max(Intervention_alle$app_usage_unique_days, na.rm = TRUE)
+app_usage_max
+
+# Übungen genutzt im Durchschnitt
+exercise_mean <- mean(Intervention$exercise_duration_total_h, na.rm = TRUE)
+exercise_mean
+#Min Max Übungen
+exercise_min <- min(Intervention$exercise_duration_total_h, na.rm = TRUE)
+exercise_min*60*60
+exercise_max <- max(Intervention$exercise_duration_total_h, na.rm = TRUE)
+exercise_max
+
+################################## einzelne Items ################################## 
+
+model_VHI_SQ01 <- lmer(VHI_SQ01 ~ sp + group + sp:group + (1 | token), data = data_level2)
+summary(model_VHI_SQ01)
+model_VHI_SQ02 <- lmer(VHI_SQ02 ~ sp + group + sp:group + (1 | token), data = data_level2)
+summary(model_VHI_SQ02)
+model_VHI_SQ03 <- lmer(VHI_SQ03 ~ sp + group + sp:group + (1 | token), data = data_level2)
+summary(model_VHI_SQ03)
+model_VHI_SQ04 <- lmer(VHI_SQ04 ~ sp + group + sp:group + (1 | token), data = data_level2)
+summary(model_VHI_SQ04)
+model_VHI_SQ05 <- lmer(VHI_SQ05 ~ sp + group + sp:group + (1 | token), data = data_level2)
+summary(model_VHI_SQ05)
+model_VHI_SQ06 <- lmer(VHI_SQ06 ~ sp + group + sp:group + (1 | token), data = data_level2)
+summary(model_VHI_SQ06)
+model_VHI_SQ07 <- lmer(VHI_SQ07 ~ sp + group + sp:group + (1 | token), data = data_level2)
+summary(model_VHI_SQ07)
+model_VHI_SQ08 <- lmer(VHI_SQ08 ~ sp + group + sp:group + (1 | token), data = data_level2)
+summary(model_VHI_SQ08)
+model_VHI_SQ09 <- lmer(VHI_SQ09 ~ sp + group + sp:group + (1 | token), data = data_level2)
+summary(model_VHI_SQ09)
+model_VHI_SQ10 <- lmer(VHI_SQ10 ~ sp + group + sp:group + (1 | token), data = data_level2)
+summary(model_VHI_SQ10)
+model_VHI_SQ11 <- lmer(VHI_SQ11 ~ sp + group + sp:group + (1 | token), data = data_level2)
+summary(model_VHI_SQ11)
+model_VHI_SQ12 <- lmer(VHI_SQ12 ~ sp + group + sp:group + (1 | token), data = data_level2)
+summary(model_VHI_SQ12)
+model_VHI_SQ13 <- lmer(VHI_SQ13 ~ sp + group + sp:group + (1 | token), data = data_level2)
+summary(model_VHI_SQ13)
+
+
+model_FESS_BZ01 <- lmer(FESS_BZ01 ~ sp + group + sp:group + (1 | token), data = data_level2)
+summary(model_FESS_BZ01)
+model_FESS_BZ02 <- lmer(FESS_BZ02 ~ sp + group + sp:group + (1 | token), data = data_level2)
+summary(model_FESS_BZ02)
+model_FESS_BZ03 <- lmer(FESS_BZ03 ~ sp + group + sp:group + (1 | token), data = data_level2)
+summary(model_FESS_BZ03)
+model_FESS_BZ04 <- lmer(FESS_BZ04 ~ sp + group + sp:group + (1 | token), data = data_level2)
+summary(model_FESS_BZ04)
+model_FESS_BZ05 <- lmer(FESS_BZ05 ~ sp + group + sp:group + (1 | token), data = data_level2)
+summary(model_FESS_BZ05)
+model_FESS_BZ06 <- lmer(FESS_BZ06 ~ sp + group + sp:group + (1 | token), data = data_level2)
+summary(model_FESS_BZ06)
+
+model_FESS_BW01 <- lmer(FESS_BW01 ~ sp + group + sp:group + (1 | token), data = data_level2)
+summary(model_FESS_BW01)
+model_FESS_BW02 <- lmer(FESS_BW02 ~ sp + group + sp:group + (1 | token), data = data_level2)
+summary(model_FESS_BW02)
+model_FESS_BW03 <- lmer(FESS_BW03 ~ sp + group + sp:group + (1 | token), data = data_level2)
+summary(model_FESS_BW03)
+model_FESS_BW04 <- lmer(FESS_BW04 ~ sp + group + sp:group + (1 | token), data = data_level2)
+summary(model_FESS_BW04)
+model_FESS_BW05 <- lmer(FESS_BW05 ~ sp + group + sp:group + (1 | token), data = data_level2)
+summary(model_FESS_BW05)
+model_FESS_BW06 <- lmer(FESS_BW06 ~ sp + group + sp:group + (1 | token), data = data_level2)
+summary(model_FESS_BW06)
+
+data_level2[complete.cases(data_level2[, c("FESS_BW01", "sp", "group", "token")]), ]
+summary(data_level2$FESS_BW01)
+summary(data_level2$sp)
+summary(data_level2$group)
+summary(data_level2$token)
+
+
+model_FESS_SE01 <- lmer(FESS_SE01 ~ sp + group + sp:group + (1 | token), data = data_level2)
+summary(model_FESS_SE01)
+model_FESS_SE02 <- lmer(FESS_SE02 ~ sp + group + sp:group + (1 | token), data = data_level2)
+summary(model_FESS_SE02)
+model_FESS_SE03 <- lmer(FESS_SE03 ~ sp + group + sp:group + (1 | token), data = data_level2)
+summary(model_FESS_SE03)
+model_FESS_SE04 <- lmer(FESS_SE04 ~ sp + group + sp:group + (1 | token), data = data_level2)
+summary(model_FESS_SE04)
+model_FESS_SE05 <- lmer(FESS_SE05 ~ sp + group + sp:group + (1 | token), data = data_level2)
+summary(model_FESS_SE05)
+
+
+#leiseste Töne
+model_singing_quietest_volume_db <- lmer(singing_quietest_volume_db ~ sp + group + sp:group + (1 | token), data = data_level2)
+summary(model_singing_quietest_volume_db)
+
+model_speaking_soft_volume_db <- lmer(speaking_soft_volume_db ~ sp + group + sp:group + (1 | token), data = data_level2)
+summary(model_speaking_soft_volume_db)
+
+model_speaking_normal_volume_db <- lmer(speaking_normal_volume_db ~ sp + group + sp:group + (1 | token), data = data_level2)
+summary(model_speaking_normal_volume_db)
+
+
+interact_plot(model_singing_quietest_volume_db, 
+              pred = sp, 
+              modx = group, 
+              modx.labels = c("Kontrollgruppe", "Interventionsgruppe"),
+              colors = c("steelblue", "firebrick")) + 
+  ylim(45, 55)+
+  labs(x = "mp")
+
+data_level2 %>% 
+  filter(sp == 0, group == 0) %>% 
+  summarise(mean_value = mean(singing_quietest_volume_db, na.rm = TRUE))
+data_level2 %>% 
+  filter(sp == 1, group == 0) %>% 
+  summarise(mean_value = mean(singing_quietest_volume_db, na.rm = TRUE))
+data_level2 %>% 
+  filter(sp == 0, group == 1) %>% 
+  summarise(mean_value = mean(singing_quietest_volume_db, na.rm = TRUE))
+data_level2 %>% 
+  filter(sp == 1, group == 1) %>% 
+  summarise(mean_value = mean(singing_quietest_volume_db, na.rm = TRUE))
+
+
+interact_plot(model_speaking_soft_volume_db, 
+              pred = sp, 
+              modx = group, 
+              modx.labels = c("Kontrollgruppe", "Interventionsgruppe"),
+              colors = c("steelblue", "firebrick")) + 
+  ylim(45, 55)+
+  labs(x = "mp")
+
+data_level2 %>% 
+  filter(sp == 0, group == 0) %>% 
+  summarise(mean_value = mean(speaking_soft_volume_db, na.rm = TRUE))
+data_level2 %>% 
+  filter(sp == 1, group == 0) %>% 
+  summarise(mean_value = mean(speaking_soft_volume_db, na.rm = TRUE))
+data_level2 %>% 
+  filter(sp == 0, group == 1) %>% 
+  summarise(mean_value = mean(speaking_soft_volume_db, na.rm = TRUE))
+data_level2 %>% 
+  filter(sp == 1, group == 1) %>% 
+  summarise(mean_value = mean(speaking_soft_volume_db, na.rm = TRUE))
+
+
+interact_plot(model_speaking_normal_volume_db, 
+              pred = sp, 
+              modx = group, 
+              modx.labels = c("Kontrollgruppe", "Interventionsgruppe"),
+              colors = c("steelblue", "firebrick")) + 
+  ylim(55, 65) +
+  labs(x = "mp")
+
+data_level2 %>% 
+  filter(sp == 0, group == 0) %>% 
+  summarise(mean_value = mean(speaking_normal_volume_db, na.rm = TRUE))
+data_level2 %>% 
+  filter(sp == 1, group == 0) %>% 
+  summarise(mean_value = mean(speaking_normal_volume_db, na.rm = TRUE))
+data_level2 %>% 
+  filter(sp == 0, group == 1) %>% 
+  summarise(mean_value = mean(speaking_normal_volume_db, na.rm = TRUE))
+data_level2 %>% 
+  filter(sp == 1, group == 1) %>% 
+  summarise(mean_value = mean(speaking_normal_volume_db, na.rm = TRUE))
+
+#einzelne Items
+
+# Trennen nach Messzeitpunkt
+FESS_diff <- data_level2 %>%
+  select(token, group, sp, starts_with("FESS")) %>%
+  select(-ends_with("_sum")) %>% 
+  pivot_wider(names_from = sp, values_from = starts_with("FESS"), names_glue = "{.value}_sp{sp}") %>%
+  mutate(across(contains("_sp1"), 
+                ~ . - get(sub("_sp1", "_sp0", cur_column())), 
+                .names = "diff_{.col}")) %>%
+  select(token, group, starts_with("diff"))
+
+glimpse(FESS_diff)
+
+FESS_diff %>% 
+  rename_with(~ gsub("^diff_(.*)_sp1$", "\\1", .x), starts_with("diff_")) %>% 
+  pivot_longer(cols = starts_with("FESS")) %>% 
+  ggplot(aes(x = name, y = value)) +
+  geom_jitter(width = 0.2, height = 0.1, alpha = 0.1, color = "steelblue") +
+  geom_boxplot(fill = "gray80", alpha = 0.5) +
+  stat_summary(fun = mean, geom = "point", shape = 18, size = 3, color = "firebrick") +
+  facet_wrap(~group, ncol = 1) +
+  theme_minimal() +
+  labs(x = "FESS Items", y = "Differenz (mp1 - mp0)", title = "Veränderung der FESS-Items") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1), strip.background = element_rect(fill = "grey80")) +
+  scale_y_continuous(breaks = -4:4)
+
+# nur ausgewählte Items
+
+FESS_diff_selected <- data_level2 %>%
+  select(token, group, sp, 
+         FESS_BZ01, FESS_BZ06, FESS_BW01, FESS_BW02, FESS_SE02) %>%
+  pivot_wider(names_from = sp, values_from = c(FESS_BZ01, FESS_BZ06, FESS_BW01, FESS_BW02, FESS_SE02), 
+              names_glue = "{.value}_sp{sp}") %>%
+  mutate(across(contains("_sp1"), 
+                ~ . - get(sub("_sp1", "_sp0", cur_column())), 
+                .names = "diff_{.col}")) %>%
+  select(token, group, starts_with("diff"))
+
+FESS_diff_selected %>% 
+  rename_with(~ gsub("^diff_(.*)_sp1$", "\\1", .x), starts_with("diff_")) %>% 
+  pivot_longer(cols = starts_with("FESS"), names_to = "name", values_to = "value") %>%
+  ggplot(aes(x = name, y = value)) +
+  geom_jitter(width = 0.2, height = 0.1, alpha = 0.2, color = "steelblue") +
+  geom_boxplot(fill = "gray80", alpha = 0.5) +
+  stat_summary(fun = mean, geom = "point", shape = 18, size = 3, color = "firebrick") +
+  facet_wrap(~group, ncol = 1) +
+  theme_minimal() +
+  labs(x = "FESS Items", y = "Differenz (mp1 - mp0)") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1), 
+        strip.background = element_rect(fill = "grey80")) +
+  scale_y_continuous(breaks = -4:4)
+
+
+
+# Trennen nach Messzeitpunkt
+VHI_diff <- data_level2 %>%
+  select(token, group, sp, starts_with("VHI")) %>%
+  select(-contains("_sum")) %>% 
+  pivot_wider(names_from = sp, values_from = starts_with("VHI"), names_glue = "{.value}_sp{sp}") %>%
+  mutate(across(contains("_sp1"), 
+                ~ . - get(sub("_sp1", "_sp0", cur_column())), 
+                .names = "diff_{.col}")) %>%
+  select(token, group, starts_with("diff"))
+
+glimpse(VHI_diff)
+
+VHI_diff %>% 
+  rename_with(~ gsub("^diff_(.*)_sp1$", "\\1", .x), starts_with("diff_")) %>% 
+  pivot_longer(cols = starts_with("VHI")) %>% 
+  ggplot(aes(x = name, y = value)) +
+  geom_jitter(width = 0.2, height = 0.1, alpha = 0.2, color = "steelblue") +
+  geom_boxplot(fill = "gray80", alpha = 0.5) +
+  stat_summary(fun = mean, geom = "point", shape = 18, size = 3, color = "firebrick") +
+  facet_wrap(~group, ncol = 1) +
+  theme_minimal() +
+  labs(x = "VHI Items", y = "Differenz (mp1 - mp0)", title = "Veränderung der VHI-Items") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1), strip.background = element_rect(fill = "grey80")) +
+  scale_y_continuous(breaks = -4:4)
+
+# nur ausgewählte Items
+
+VHI_diff_selected <- data_level2 %>%
+  select(token, group, sp, 
+         VHI_SQ01, VHI_SQ02, VHI_SQ03) %>%
+  pivot_wider(names_from = sp, values_from = c(VHI_SQ01, VHI_SQ02, VHI_SQ03), 
+              names_glue = "{.value}_sp{sp}") %>%
+  mutate(across(contains("_sp1"), 
+                ~ . - get(sub("_sp1", "_sp0", cur_column())), 
+                .names = "diff_{.col}")) %>%
+  select(token, group, starts_with("diff"))
+
+VHI_diff_selected %>% 
+  rename_with(~ gsub("^diff_(.*)_sp1$", "\\1", .x), starts_with("diff_")) %>% 
+  pivot_longer(cols = starts_with("VHI"), names_to = "name", values_to = "value") %>%
+  ggplot(aes(x = name, y = value)) +
+  geom_jitter(width = 0.2, height = 0.1, alpha = 0.2, color = "steelblue") +
+  geom_boxplot(fill = "gray80", alpha = 0.5) +
+  stat_summary(fun = mean, geom = "point", shape = 18, size = 3, color = "firebrick") +
+  facet_wrap(~group, ncol = 1) +
+  theme_minimal() +
+  labs(x = "VHI Items", y = "Differenz (mp1 - mp0)") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1), 
+        strip.background = element_rect(fill = "grey80")) +
+  scale_y_continuous(breaks = -4:4)
+
+
+
+
+
+
