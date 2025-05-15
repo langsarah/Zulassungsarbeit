@@ -186,6 +186,10 @@ summary(model_FESS_SE_02)
 model_summary_FESS_SE_02 <- tidy(model_FESS_SE_02)
 write_xlsx(model_summary_FESS_SE_02, "model_FESS_SE_02_summary.xlsx")
 
+# Teste auf Abweichungen vom mittleren Wert
+data_level2$FESS_SE_dev <- abs(data_level2$FESS_SE_sum - 10)
+summary(lmer(FESS_SE_dev ~ sp + group + gender + age + workload_hours + sp:group + (1 | token), data = data_level2))
+
 
 #z-standardisierte Werte
 ################################# VHI ########################################
