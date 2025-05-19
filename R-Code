@@ -114,24 +114,6 @@ summary(model_Stimmfeld_02)
 model_summary_Stimmfeld_02 <- tidy(model_Stimmfeld_02)
 write_xlsx(model_summary_Stimmfeld_02, "model_Stimmfeld_02_summary.xlsx")
 
-################################## FESS ##################################
-
-model_FESS_01 <- lmer(FESS_sum ~ sp + group + gender + age + workload_hours + sp:group + (1 | token), data = data_level2)
-summary(model_FESS_01)
-model_summary_FESS_01 <- tidy(model_FESS_01)
-write_xlsx(model_summary_FESS_01, "model_FESS_01_summary.xlsx")
-plot(model_FESS_01, type = c("p", "smooth"), col.line = "black")
-xyplot(sqrt(abs(resid(model_FESS_01))) ~ fitted(model_FESS_01), type = c("p", "smooth", "g"),
-       col.line = "black")
-residuals_FESS <- resid(model_FESS_01)
-qqnorm(residuals_FESS, main = "Q-Q-Plot of residuals")
-qqline(residuals_FESS, col = "red")
-
-model_FESS_02 <- lmer(FESS_sum ~ gender + age + workload_hours + sp * app_usage_unique_days + sp * excercise_duration_total + (1 | token), data = data_level2 %>% filter(group == 1, app_usage_unique_days > 1))
-summary(model_FESS_02)
-model_summary_FESS_02 <- tidy(model_FESS_02)
-write_xlsx(model_summary_FESS_02, "model_FESS_02_summary.xlsx")
-
 ################################## FESS_BW ##################################
 
 model_FESS_BW_01 <- lmer(FESS_BW_sum ~ sp + group + gender + age + workload_hours + sp:group + (1 | token), data = data_level2)
@@ -228,18 +210,6 @@ model_Stimmfeld_02_scaled <- lmer(singing_profile_size ~ gender + age + workload
 summary(model_Stimmfeld_02_scaled)
 model_summary_Stimmfeld_02_scaled <- tidy(model_Stimmfeld_02_scaled)
 write_xlsx(model_summary_Stimmfeld_02_scaled, "model_Stimmfeld_02_summary_scaled.xlsx")
-
-################################## FESS ##################################
-
-model_FESS_01_scaled <- lmer(FESS_sum ~ sp + group + gender + age + workload_hours + sp:group + (1 | token), data = data_level2_scaled)
-summary(model_FESS_01_scaled)
-model_summary_FESS_01_scaled <- tidy(model_FESS_01_scaled)
-write_xlsx(model_summary_FESS_01_scaled, "model_FESS_01_summary_scaled.xlsx")
-
-model_FESS_02_scaled <- lmer(FESS_sum ~ gender + age + workload_hours + sp * app_usage_unique_days + sp * excercise_duration_total + (1 | token), data = data_level2_scaled %>% filter(group == 1, app_usage_unique_days > 1))
-summary(model_FESS_02_scaled)
-model_summary_FESS_02_scaled <- tidy(model_FESS_02_scaled)
-write_xlsx(model_summary_FESS_02_scaled, "model_FESS_02_summary_scaled.xlsx")
 
 ################################## FESS_BW ##################################
 
